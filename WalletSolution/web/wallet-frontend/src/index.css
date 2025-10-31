@@ -1,0 +1,3 @@
+html,body,#root { height: 100%; margin: 0; font-family: Inter, system-ui, Arial; background: #f7f8fb; }
+input, button { font-family: inherit; }
+button { cursor: pointer; }
