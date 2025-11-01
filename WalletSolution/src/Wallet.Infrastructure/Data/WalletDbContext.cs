@@ -9,6 +9,9 @@ namespace Wallet.Infrastructure.Data
 
         public DbSet<WalletEntity> Wallets { get; set; } = null!;
         public DbSet<WalletTransaction> WalletTransactions { get; set; } = null!;
+        public DbSet<User> Users { get; set; } = null!;
+        public DbSet<ServiceEntity> Services { get; set; } = null!;
+        public DbSet<ConfigurationRule> ConfigurationRules { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -33,6 +36,46 @@ namespace Wallet.Infrastructure.Data
                 b.HasIndex(t => new { t.WalletId, t.ExternalReference }).IsUnique().HasFilter("[ExternalReference] IS NOT NULL");
                 b.HasOne<WalletEntity>().WithMany().HasForeignKey(t => t.WalletId).OnDelete(DeleteBehavior.Cascade);
             });
+
+            // User
+            modelBuilder.Entity<User>(b =>
+            {
+                b.HasKey(x => x.Id);
+                b.Property(x => x.DisplayName).HasMaxLength(200);
+                b.Property(x => x.email).HasMaxLength(200);
+                b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            });
+
+            // Service
+            modelBuilder.Entity<ServiceEntity>(b =>
+            {
+                b.ToTable("Services");
+                b.HasKey(x => x.Id);
+                b.Property(x => x.Name).IsRequired().HasMaxLength(200);
+                b.Property(x => x.Description).HasMaxLength(500);
+                b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            });
+
+            // ConfigurationRule
+            modelBuilder.Entity<ConfigurationRule>(b =>
+            {
+                b.HasKey(x => x.Id);
+                b.Property(x => x.RuleType).IsRequired().HasMaxLength(50);
+                b.Property(x => x.PointsPerBaseAmount).IsRequired();
+                b.Property(x => x.BaseAmount).HasColumnType("decimal(18,2)").IsRequired();
+                b.Property(x => x.IsDefault).HasDefaultValue(false);
+                b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                b.HasIndex(x => new { x.ServiceId, x.RuleType });
+            });
+
+            // If you want a FK constraint from ConfigurationRule.ServiceId to Services:
+            modelBuilder.Entity<ConfigurationRule>()
+                .HasOne<ServiceEntity>()
+                .WithMany()
+                .HasForeignKey(r => r.ServiceId)
+                .OnDelete(DeleteBehavior.Restrict);
+
 
             base.OnModelCreating(modelBuilder);
         }

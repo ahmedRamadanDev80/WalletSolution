@@ -6,5 +6,8 @@ using System.Threading.Tasks;
 
 namespace Wallet.Application.DTOs
 {
-    public record EarnRequest(long Amount, string? ExternalReference, string? Description);
+    public class LoginRequest
+    {
+        public string? UserId { get; set; }
+    }
 }

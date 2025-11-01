@@ -15,27 +15,77 @@ namespace Wallet.Application.Services
         private readonly IWalletRepository _walletRepo;
         private readonly IWalletTransactionRepository _txRepo;
         private readonly IUnitOfWork _uow;
+        private readonly IConfigurationRuleRepository _ruleRepo;
 
-        public WalletService(IWalletRepository walletRepo, IWalletTransactionRepository txRepo, IUnitOfWork uow)
+        public WalletService(IWalletRepository walletRepo, IWalletTransactionRepository txRepo, IUnitOfWork uow, IConfigurationRuleRepository ruleRepo)
         {
             _walletRepo = walletRepo;
             _txRepo = txRepo;
             _uow = uow;
+            _ruleRepo = ruleRepo;
         }
 
-        public async Task<WalletDto> EarnAsync(Guid userId, long amount, string? externalRef, string? desc, CancellationToken ct)
+        // New signature: accepts userId (controller will extract from JWT) and serviceId optional
+        public async Task<WalletDto> EarnAsync(Guid userId, decimal amountMoney, Guid? serviceId, string? externalRef, string? desc, CancellationToken ct)
         {
-            if (amount <= 0) throw new ArgumentException(nameof(amount));
+            if (amountMoney <= 0) throw new ArgumentException(nameof(amountMoney));
 
-            var wallet = await _walletRepo.GetByUserIdAsync(userId, ct) ?? throw new InvalidOperationException("Wallet not found");
+            var wallet = await _walletRepo.GetByUserIdAsync(userId, ct);
+            if (wallet == null) throw new InvalidOperationException("Wallet not found");
+
             // idempotency check
             if (!string.IsNullOrEmpty(externalRef) && await _txRepo.ExistsByExternalReferenceAsync(wallet.Id, externalRef, ct))
             {
-                // return current state (idempotent)
+                // Already applied — return current state
                 return new WalletDto(wallet.UserId, wallet.Balance);
             }
 
-            // transaction + optimistic concurrency with retries
+            // Determine points to add using config rule if available
+            long pointsToAdd;
+            if (serviceId.HasValue)
+            {
+                var rule = await _ruleRepo.GetByServiceAndTypeAsync(serviceId.Value, "EARNING", ct);
+                if (rule != null)
+                {
+                    // formula: floor( amountMoney / BaseAmount * PointsPerBaseAmount )
+                    var factor = Math.Floor(amountMoney / rule.BaseAmount);
+                    pointsToAdd = (long)(factor * rule.PointsPerBaseAmount);
+                }
+                else
+                {
+                    var defaultRule = await _ruleRepo.GetDefaultRuleAsync("EARNING", ct);
+                    if (defaultRule != null)
+                    {
+                        var factor = Math.Floor(amountMoney / defaultRule.BaseAmount);
+                        pointsToAdd = (long)(factor * defaultRule.PointsPerBaseAmount);
+                    }
+                    else
+                    {
+                        // fallback simple rule
+                        pointsToAdd = (long)Math.Floor(amountMoney);
+                    }
+                }
+            }
+            else
+            {
+                var defaultRule = await _ruleRepo.GetDefaultRuleAsync("EARNING", ct);
+                if (defaultRule != null)
+                {
+                    var factor = Math.Floor(amountMoney / defaultRule.BaseAmount);
+                    pointsToAdd = (long)(factor * defaultRule.PointsPerBaseAmount);
+                }
+                else
+                {
+                    pointsToAdd = (long)Math.Floor(amountMoney);
+                }
+            }
+
+            if (pointsToAdd <= 0)
+            {
+                // nothing to add (e.g., amount less than base amount)
+                return new WalletDto(wallet.UserId, wallet.Balance);
+            }
+
             int attempts = 0;
             while (true)
             {
@@ -44,10 +94,18 @@ namespace Wallet.Application.Services
                 {
                     await _uow.BeginTransactionAsync(ct);
 
-                    wallet.AddPoints(amount);
+                    wallet.AddPoints(pointsToAdd); // ensure Wallet entity has AddPoints(long)
                     _walletRepo.Update(wallet);
 
-                    var tx = new WalletTransaction(wallet.Id, "EARN", amount, wallet.Balance, externalRef, desc);
+                    var tx = new WalletTransaction(
+                        wallet.Id,
+                        "EARN",
+                        pointsToAdd,
+                        wallet.Balance,
+                        externalRef,
+                        desc
+                    );
+
                     await _txRepo.AddAsync(tx, ct);
 
                     await _uow.SaveChangesAsync(ct);
@@ -59,7 +117,7 @@ namespace Wallet.Application.Services
                 {
                     await _uow.RollbackAsync(ct);
                     if (attempts >= 3) throw;
-                    // refresh wallet from DB and retry
+                    // reload wallet and retry
                     wallet = await _walletRepo.GetByUserIdAsync(userId, ct) ?? throw new InvalidOperationException("Wallet missing during retry");
                     continue;
                 }
@@ -71,15 +129,19 @@ namespace Wallet.Application.Services
             }
         }
 
-        public async Task<WalletDto> BurnAsync(Guid userId, long amount, string? externalRef, string? desc, CancellationToken ct)
+        public async Task<WalletDto> BurnAsync(Guid userId, decimal amountMoneyOrPoints, string? externalRef, string? desc, CancellationToken ct)
         {
-            if (amount <= 0) throw new ArgumentException(nameof(amount));
+            if (amountMoneyOrPoints <= 0) throw new ArgumentException(nameof(amountMoneyOrPoints));
+
             var wallet = await _walletRepo.GetByUserIdAsync(userId, ct) ?? throw new InvalidOperationException("Wallet not found");
 
             if (!string.IsNullOrEmpty(externalRef) && await _txRepo.ExistsByExternalReferenceAsync(wallet.Id, externalRef, ct))
             {
                 return new WalletDto(wallet.UserId, wallet.Balance);
             }
+
+            // For burning we assume 1 point = 1 SAR unless you have burn-specific rules (could extend)
+            long pointsToBurn = (long)Math.Floor(amountMoneyOrPoints);
 
             int attempts = 0;
             while (true)
@@ -89,12 +151,12 @@ namespace Wallet.Application.Services
                 {
                     await _uow.BeginTransactionAsync(ct);
 
-                    if (wallet.Balance < amount) throw new InvalidOperationException("Insufficient points");
+                    if (wallet.Balance < pointsToBurn) throw new InvalidOperationException("Insufficient points");
 
-                    wallet.BurnPoints(amount);
+                    wallet.BurnPoints(pointsToBurn);
                     _walletRepo.Update(wallet);
 
-                    var tx = new WalletTransaction(wallet.Id, "BURN", amount, wallet.Balance, externalRef, desc);
+                    var tx = new WalletTransaction(wallet.Id, "BURN", pointsToBurn, wallet.Balance, externalRef, desc);
                     await _txRepo.AddAsync(tx, ct);
 
                     await _uow.SaveChangesAsync(ct);
