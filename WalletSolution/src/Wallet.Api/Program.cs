@@ -29,6 +29,7 @@ builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 builder.Services.AddScoped<IWalletTransactionRepository, WalletTransactionRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IServiceRepository, ServiceRepository>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IConfigurationRuleRepository, ConfigurationRuleRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IWalletService, WalletService>();

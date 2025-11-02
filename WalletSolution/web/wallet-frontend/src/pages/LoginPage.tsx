@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
     Box,
     Button,
@@ -14,7 +13,6 @@ import api from "../api/axios";
 export default function LoginPage() {
     const [email, setEmail] = useState<string>("");
     const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();

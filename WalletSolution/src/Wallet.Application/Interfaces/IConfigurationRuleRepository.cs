@@ -14,6 +14,8 @@ namespace Wallet.Application.Interfaces
         Task<ConfigurationRule?> GetDefaultRuleAsync(string ruleType, CancellationToken ct = default);
         Task AddAsync(ConfigurationRule rule, CancellationToken ct = default);
         void Update(ConfigurationRule rule);
+        Task<IEnumerable<ConfigurationRule>> GetAllAsync(CancellationToken ct = default);
+        Task DeleteAsync(Guid id, CancellationToken ct = default);
         Task SaveChangesAsync(CancellationToken ct = default);
     }
 }

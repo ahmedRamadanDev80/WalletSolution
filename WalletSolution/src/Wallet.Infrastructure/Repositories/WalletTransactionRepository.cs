@@ -42,5 +42,13 @@ namespace Wallet.Infrastructure.Repositories
         {
             return await _db.WalletTransactions.CountAsync(t => t.WalletId == walletId, ct);
         }
+
+        public async Task<long> SumAmountByTypeAsync(string type, CancellationToken ct = default)
+        {
+            return await _db.WalletTransactions
+                .Where(t => t.Type == type)
+                .SumAsync(t => (long?)t.Amount, ct) ?? 0L;
+        }
+
     }
 }

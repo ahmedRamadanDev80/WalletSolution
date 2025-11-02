@@ -22,6 +22,12 @@ export default function TopBar({ authenticated, onLogout }: TopBarProps) {
                     <Button color="inherit" component={Link} to="/transactions">
                         Transactions
                     </Button>
+                    <Button color="inherit" component={Link} to="/admin/rules">
+                        Rules
+                    </Button>
+                    <Button color="inherit" component={Link} to="/admin/dashboard">
+                        Dashboard
+                    </Button>
                 </Box>
 
                 {/* spacer */}

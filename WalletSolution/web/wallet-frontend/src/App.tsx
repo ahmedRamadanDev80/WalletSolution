@@ -7,6 +7,8 @@ import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import TopBar from "./components/TopBar";
 import './App.css';
+import AdminRulesPage from "./pages/AdminRulesPage";
+import AdminDashboard from "./pages/AdminDashboard";
 
 function AppRoutesWrapper() {
   // we keep routing logic inside a nested component to use hooks (useNavigate)
@@ -63,6 +65,8 @@ function AppRoutesWrapper() {
               </ProtectedRoute>
             }
           />
+          <Route path="/admin/rules" element={<ProtectedRoute><AdminRulesPage /></ProtectedRoute>} />
+          <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
 
           {/* fallback: redirect to wallet */}
           <Route path="*" element={<Navigate to="/" replace />} />

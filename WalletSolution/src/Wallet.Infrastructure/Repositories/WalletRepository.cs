@@ -13,6 +13,13 @@ namespace Wallet.Infrastructure.Repositories
 
         public WalletRepository(WalletDbContext db) { _db = db; }
 
+        public async Task<int> CountActiveAsync(CancellationToken ct = default)
+        {
+            return await _db.Wallets
+                .Where(w => w.Balance > 0)
+                .CountAsync(ct);
+        }
+
         public async Task CreateAsync(WalletEntity wallet, CancellationToken ct = default)
         {
             await _db.Wallets.AddAsync(wallet, ct);

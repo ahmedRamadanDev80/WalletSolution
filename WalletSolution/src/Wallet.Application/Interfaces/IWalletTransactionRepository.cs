@@ -13,5 +13,8 @@ namespace Wallet.Application.Interfaces
         Task<bool> ExistsByExternalReferenceAsync(Guid walletId, string externalRef, CancellationToken ct = default);
         Task<IReadOnlyList<WalletTransaction>> GetTransactionsAsync(Guid walletId, int skip, int take, CancellationToken ct = default);
         Task<int> CountAsync(Guid walletId, CancellationToken ct = default);
+
+        Task<long> SumAmountByTypeAsync(string type, CancellationToken ct = default);
+
     }
 }
