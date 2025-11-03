@@ -43,7 +43,7 @@ function AppRoutesWrapper() {
     <>
       <TopBar authenticated={authenticated} onLogout={handleLogout} />
 
-      <Container sx={{ mt: 4 }}>
+      <Container sx={{ mt: 10 }} maxWidth="lg">
         <Routes>
           {/* Public route */}
           <Route path="/login" element={<LoginPage />} />
