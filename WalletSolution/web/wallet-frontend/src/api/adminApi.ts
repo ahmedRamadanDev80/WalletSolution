@@ -3,6 +3,7 @@ import api from "./axios";
 export type ConfigurationRuleDto = {
     id: string;
     serviceId: string;
+    serviceName?: string;
     ruleType: string;
     pointsPerBaseAmount: number;
     baseAmount: number;

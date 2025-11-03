@@ -21,6 +21,16 @@ namespace Wallet.Infrastructure.Repositories
 
         public async Task<ServiceEntity?> GetByIdAsync(Guid id, CancellationToken ct = default) => await _ctx.Services.FindAsync(new object[] { id }, ct);
 
+        public async Task<IEnumerable<ServiceEntity>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
+        {
+            var idList = ids as IList<Guid> ?? ids.ToList();
+            if (!idList.Any()) return Enumerable.Empty<ServiceEntity>();
+
+            return await _ctx.Services
+                .Where(s => idList.Contains(s.Id))
+                .ToListAsync(ct);
+        }
+
         public void Update(ServiceEntity service) => _ctx.Services.Update(service);
 
         public async Task SaveChangesAsync(CancellationToken ct = default) => await _ctx.SaveChangesAsync(ct);

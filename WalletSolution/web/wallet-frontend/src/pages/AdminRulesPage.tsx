@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import {
     Box,
@@ -26,12 +27,16 @@ import {
     deleteRule,
     type ConfigurationRuleDto,
 } from "../api/adminApi";
+import {
+    getServices
+} from "../api/servicesApi";
 
 export default function AdminRulesPage() {
     const [rules, setRules] = useState<ConfigurationRuleDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<ConfigurationRuleDto | null>(null);
+    const [services, setServices] = useState<{ id: string; name: string }[]>([]);
 
     const [form, setForm] = useState({
         serviceId: "",
@@ -56,7 +61,18 @@ export default function AdminRulesPage() {
 
     useEffect(() => {
         load();
+        loadServices();
     }, []);
+
+async function loadServices() {
+    try {
+        const res = await getServices();
+        setServices(res); 
+    } catch (err) {
+        console.error("Failed to load services", err);
+        alert("Failed to load services");
+    }
+}
 
     function openCreate() {
         setEditing(null);
@@ -110,8 +126,8 @@ export default function AdminRulesPage() {
     }
 
     const columns: GridColDef<ConfigurationRuleDto>[] = [
-        // { field: "id", headerName: "Id", width: 220 },
-        { field: "serviceId", headerName: "ServiceId", width: 200 },
+        { field: "id", headerName: "Id", width: 220 },
+        { field: "serviceName", headerName: "Service", width: 200 },
         { field: "ruleType", headerName: "Type", width: 120 },
         { field: "pointsPerBaseAmount", headerName: "Points Per Base", width: 150 },
         { field: "baseAmount", headerName: "Base Amount", width: 140 },
@@ -161,7 +177,9 @@ export default function AdminRulesPage() {
                             getRowId={(r: any) => r.id}
                             loading={loading}
                             pageSizeOptions={[5, 10, 20]}
-                            initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
+                            initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } },
+                                            columns: { columnVisibilityModel: { id: false } } 
+                                        }}
                         />
                     </div>
 
@@ -169,11 +187,20 @@ export default function AdminRulesPage() {
                         <DialogTitle>{editing ? "Edit Rule" : "Create Rule"}</DialogTitle>
                         <DialogContent>
                             <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2} mt={1}>
-                                <TextField
-                                    label="ServiceId"
-                                    value={form.serviceId}
-                                    onChange={(e) => setForm({ ...form, serviceId: e.target.value })}
-                                />
+                                <FormControl fullWidth>
+                                    <InputLabel>Service</InputLabel>
+                                    <Select
+                                        value={form.serviceId}
+                                        label="Service"
+                                        onChange={(e) => setForm({ ...form, serviceId: e.target.value as string })}
+                                    >
+                                        {services.map((s) => (
+                                            <MenuItem key={s.id} value={s.id}>
+                                                {s.name}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
 
                                 <FormControl>
                                     <InputLabel>Type</InputLabel>
