@@ -60,7 +60,7 @@ namespace Wallet.Api.Controllers
             if (req == null) return BadRequest("Missing request body");
             if (req.Amount <= 0) return BadRequest("Amount must be > 0");
 
-            var dto = await _walletService.BurnAsync(userId, req.Amount, req.ExternalReference, req.Description, ct);
+            var dto = await _walletService.BurnAsync(userId, req.Amount, req.ServiceId, req.ExternalReference, req.Description, ct);
             return Ok(new { userId = dto.UserId, balance = dto.Balance });
         }
 

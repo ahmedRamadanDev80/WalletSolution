@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 namespace Wallet.Application.DTOs
 {
-    public record BurnRequestDto(decimal Amount, string? ExternalReference, string? Description);
+    public record BurnRequestDto(decimal Amount, string? ExternalReference, string? Description,Guid? ServiceId);
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from "../api/axios";
 
 export type WalletDto = { userId: string; balance: number };
@@ -22,9 +23,8 @@ export function generateExternalRef(): string {
     // modern browsers support crypto.randomUUID()
     // fallback to timestamp + random number
     try {
-        // @ts-ignore - crypto may be available in the environment
+        
         if (typeof crypto !== "undefined" && typeof (crypto as any).randomUUID === "function") {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return `EXT-${(crypto as any).randomUUID()}`;
         }
     } catch {
@@ -78,12 +78,14 @@ export async function earn(
 export async function burn(
     amount: number,
     externalReference?: string | null,
-    description?: string | null
+    description?: string | null,
+    serviceId?: string | null
 ): Promise<WalletDto> {
     const payload: Record<string, unknown> = { amount };
     if (externalReference) payload.externalReference = externalReference;
     if (description) payload.description = description;
-
+    if (serviceId) payload.serviceId = serviceId;
+    
     const res = await api.post<WalletDto>("/wallets/burn", payload);
     return res.data;
 }

@@ -47,17 +47,16 @@ namespace Wallet.Application.Services
                 var rule = await _ruleRepo.GetByServiceAndTypeAsync(serviceId.Value, "EARNING", ct);
                 if (rule != null)
                 {
-                    // formula: floor( amountMoney / BaseAmount * PointsPerBaseAmount )
-                    var factor = Math.Floor(amountMoney / rule.BaseAmount);
-                    pointsToAdd = (long)(factor * rule.PointsPerBaseAmount);
+                    if (rule.BaseAmount <= 0) throw new InvalidOperationException("Invalid rule BaseAmount");
+                    pointsToAdd = (long)Math.Floor((amountMoney / rule.BaseAmount) * rule.PointsPerBaseAmount);
                 }
                 else
                 {
                     var defaultRule = await _ruleRepo.GetDefaultRuleAsync("EARNING", ct);
                     if (defaultRule != null)
                     {
-                        var factor = Math.Floor(amountMoney / defaultRule.BaseAmount);
-                        pointsToAdd = (long)(factor * defaultRule.PointsPerBaseAmount);
+                        if (defaultRule.BaseAmount <= 0) throw new InvalidOperationException("Invalid default rule BaseAmount");
+                        pointsToAdd = (long)Math.Floor((amountMoney / defaultRule.BaseAmount) * defaultRule.PointsPerBaseAmount);
                     }
                     else
                     {
@@ -71,8 +70,8 @@ namespace Wallet.Application.Services
                 var defaultRule = await _ruleRepo.GetDefaultRuleAsync("EARNING", ct);
                 if (defaultRule != null)
                 {
-                    var factor = Math.Floor(amountMoney / defaultRule.BaseAmount);
-                    pointsToAdd = (long)(factor * defaultRule.PointsPerBaseAmount);
+                    if (defaultRule.BaseAmount <= 0) throw new InvalidOperationException("Invalid default rule BaseAmount");
+                    pointsToAdd = (long)Math.Floor((amountMoney / defaultRule.BaseAmount) * defaultRule.PointsPerBaseAmount);
                 }
                 else
                 {
@@ -82,7 +81,7 @@ namespace Wallet.Application.Services
 
             if (pointsToAdd <= 0)
             {
-                // nothing to add (e.g., amount less than base amount)
+                // nothing to add (e.g., very small amount)
                 return new WalletDto(wallet.UserId, wallet.Balance);
             }
 
@@ -129,7 +128,7 @@ namespace Wallet.Application.Services
             }
         }
 
-        public async Task<WalletDto> BurnAsync(Guid userId, decimal amountMoneyOrPoints, string? externalRef, string? desc, CancellationToken ct)
+        public async Task<WalletDto> BurnAsync(Guid userId, decimal amountMoneyOrPoints, Guid? serviceId, string? externalRef, string? desc, CancellationToken ct)
         {
             if (amountMoneyOrPoints <= 0) throw new ArgumentException(nameof(amountMoneyOrPoints));
 
@@ -140,8 +139,44 @@ namespace Wallet.Application.Services
                 return new WalletDto(wallet.UserId, wallet.Balance);
             }
 
-            // For burning we assume 1 point = 1 SAR unless you have burn-specific rules (could extend)
-            long pointsToBurn = (long)Math.Floor(amountMoneyOrPoints);
+            // Determine pointsToBurn using rule if available
+            long pointsToBurn;
+            if (serviceId.HasValue)
+            {
+                var rule = await _ruleRepo.GetByServiceAndTypeAsync(serviceId.Value, "BURN", ct);
+                if (rule != null)
+                {
+                    if (rule.BaseAmount <= 0) throw new InvalidOperationException("Invalid rule BaseAmount");
+                    pointsToBurn = (long)Math.Floor((amountMoneyOrPoints / rule.BaseAmount) * rule.PointsPerBaseAmount);
+                }
+                else
+                {
+                    var defaultRule = await _ruleRepo.GetDefaultRuleAsync("BURN", ct);
+                    if (defaultRule != null)
+                    {
+                        if (defaultRule.BaseAmount <= 0) throw new InvalidOperationException("Invalid default rule BaseAmount");
+                        pointsToBurn = (long)Math.Floor((amountMoneyOrPoints / defaultRule.BaseAmount) * defaultRule.PointsPerBaseAmount);
+                    }
+                    else
+                    {
+                        pointsToBurn = (long)Math.Floor(amountMoneyOrPoints);
+                    }
+                }
+            }
+            else
+            {
+                var defaultRule = await _ruleRepo.GetDefaultRuleAsync("BURN", ct);
+                if (defaultRule != null)
+                {
+                    if (defaultRule.BaseAmount <= 0) throw new InvalidOperationException("Invalid default rule BaseAmount");
+                    pointsToBurn = (long)Math.Floor((amountMoneyOrPoints / defaultRule.BaseAmount) * defaultRule.PointsPerBaseAmount);
+                }
+                else
+                {
+                    pointsToBurn = (long)Math.Floor(amountMoneyOrPoints);
+                }
+            }
+
 
             int attempts = 0;
             while (true)

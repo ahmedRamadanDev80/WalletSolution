@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import {
     Box,
@@ -23,7 +24,7 @@ import { getBalance, earn, burn, generateExternalRef } from "../api/walletApi";
 type WalletDto = { userId: string; balance: number };
 type Service = { id: string; name: string; description?: string };
 
-export default function WalletPage(){
+export default function WalletPage() {
     // Try to read userId from localStorage (set by login). still keep a state field for display.
     const storedUserId = localStorage.getItem("userId") ?? "";
     const [userId, setUserId] = useState<string>(storedUserId);
@@ -64,7 +65,6 @@ export default function WalletPage(){
     useEffect(() => {
         if (!localStorage.getItem("jwt")) return;
         loadWallet();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     async function loadWallet() {
@@ -87,7 +87,12 @@ export default function WalletPage(){
         if (!amount || Number(amount) <= 0) return alert("Enter amount > 0");
         setLoading(true);
         try {
-            const res = await earn(Number(amount), selectedServiceId || undefined, externalRef || undefined, description || undefined);
+            const res = await earn(
+                Number(amount),
+                selectedServiceId || undefined,
+                externalRef || undefined,
+                description || undefined
+            );
             setWallet({ userId: res.userId, balance: Number(res.balance ?? 0) });
             setAmount("");
             // clear externalRef/description optionally
@@ -105,7 +110,14 @@ export default function WalletPage(){
         if (!amount || Number(amount) <= 0) return alert("Enter amount > 0");
         setLoading(true);
         try {
-            const res = await burn(Number(amount), externalRef || undefined, description || undefined);
+            const res = await burn(
+                Number(amount),
+                externalRef || undefined,
+                description || undefined,
+                // use selectedServiceId (not a non-existing serviceId variable)
+                (selectedServiceId && selectedServiceId !== "") ? selectedServiceId : undefined
+            );
+
             setWallet({ userId: res.userId, balance: Number(res.balance ?? 0) });
             setAmount("");
             setExternalRef("");
