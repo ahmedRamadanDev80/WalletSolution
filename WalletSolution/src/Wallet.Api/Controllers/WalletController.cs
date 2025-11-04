@@ -72,7 +72,13 @@ namespace Wallet.Api.Controllers
 
             var result = await _walletService.GetTransactionsAsync(userId, skip, take, ct);
 
-            if (result == null || result.Total == 0) return NotFound();
+            // return 200 OK even when result.Total == 0 so client gets { items: [], total: 0 }
+            // only treat a completely missing result as server-side unexpected condition
+            if (result == null)
+            {
+                // optional: log unexpected null result
+                return StatusCode(500, "Failed to fetch transactions.");
+            }
 
             return Ok(result);
         }
